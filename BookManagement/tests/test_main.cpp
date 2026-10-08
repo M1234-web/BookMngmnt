@@ -6,6 +6,7 @@
 #include <string>
 
 #include "bookmgmt/bookmgmt.h"
+#include "bookmgmt/Journal.h"
 
 using namespace bookmgmt;
 
@@ -163,12 +164,29 @@ static void testAcquisition() {
     CHECK(acq.history().size() == 6);
 }
 
+static void testJournal() {
+    Journal j("J1", "Nature", "Springer", 2026, Money::of(100), "0028-0836", 52, 3);
+    
+    CHECK(j.category() == ResourceCategory::Journal);
+    CHECK(!j.isDigital());
+    
+    // costFor = unitPrice (100) * quantity (2) * subscriptionYears (3) = 600
+    CHECK(j.costFor(2) == Money::of(600));
+    
+    // Test validation
+    CHECK_THROWS(Journal("J2", "Bad", "Pub", 2026, Money::of(10), "1234", 12, 0), 
+                 std::invalid_argument);
+    CHECK_THROWS(j.costFor(0), std::invalid_argument);
+}
+
 int main() {
     testMoney();
     testResourcesAndCost();
     testCatalog();
     testBudget();
     testAcquisition();
+    testJournal();
+    
     std::cout << (g_checks - g_failures) << "/" << g_checks << " checks passed\n";
     return g_failures == 0 ? 0 : 1;
 }

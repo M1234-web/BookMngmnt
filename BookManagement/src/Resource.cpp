@@ -10,6 +10,7 @@ const char* categoryName(ResourceCategory c) {
     switch (c) {
         case ResourceCategory::Book: return "Book";
         case ResourceCategory::ElectronicResource: return "ElectronicResource";
+        case ResourceCategory::Journal: return "Journal";
     }
     return "Unknown";
 }

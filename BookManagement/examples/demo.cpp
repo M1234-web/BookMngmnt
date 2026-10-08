@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "bookmgmt/bookmgmt.h"
+#include "bookmgmt/Journal.h"
 
 using namespace bookmgmt;
 
@@ -66,5 +67,25 @@ int main() {
     } catch (const QuotaExceededError& e) {
         std::cout << "QuotaExceededError: " << e.what() << "\n";
     }
+
+    std::cout << "\n=== Q1: Journal Demonstration ===\n";
+    
+    // 1. Add Journal to catalog
+    catalog.emplace<Journal>("J001", "Nature", "Springer", 2026, Money::of(100), "0028-0836", 52, 2);
+    
+    // 2. Set quota (We have about 6200 overall budget remaining from the initial 20000)
+    budget.setQuota(ResourceCategory::Journal, {10, Money::of(2000)});
+    
+    // 3. Purchase Journal (100 * 2 copies * 2 years = 400)
+    auto j_rec = acq.purchase("J001", 2);
+    if (j_rec.approved) {
+        std::cout << "Successfully purchased 2 copies of Journal!\n";
+        std::cout << "Cost: " << j_rec.cost << "\n\n";
+    }
+
+    // 4. Print details to show overridden printDetails()
+    std::cout << "Journal Details:\n" << catalog.get("J001");
+    // -------------------------------------------------------------
+
     return 0;
 }
