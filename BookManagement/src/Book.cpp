@@ -33,4 +33,17 @@ void Book::printDetails(std::ostream& os) const {
        << "\n";
 }
 
+// Q4: Apply 20% markup to Hardcover books
+Money Book::costFor(int copies) const {
+    requirePositive(copies);
+    std::int64_t totalMinorUnits = (unitPrice() * copies).minorUnits();
+    
+    if (binding_ == Binding::Hardcover) {
+        // Multiply by 120 / 100 to add exactly 20% using integer math
+        totalMinorUnits = (totalMinorUnits * 120) / 100;
+    }
+    
+    return Money::fromMinor(totalMinorUnits);
+}
+
 }  // namespace bookmgmt

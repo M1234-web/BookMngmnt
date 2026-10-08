@@ -132,5 +132,21 @@ int main() {
     std::cout << "\nAudioBook Details:\n" << catalog.get("A001");
     std::cout << "\nThesis Details:\n" << catalog.get("T001");
 
+    // NEW CODE FOR Q4: HARDCOVER PRICING DEMO
+
+    std::cout << "\n=== Q4: Hardcover Book Pricing ===\n";
+    catalog.emplace<Book>("B003", "Design Patterns (Hardcover)", 
+                          std::vector<std::string>{"Gang of Four"}, "978-0201633610", 
+                          "Addison-Wesley", 1994, Money::of(50), 1, Binding::Hardcover);
+    
+    // REMOVED the setQuota line so we don't break the existing budget!
+    auto hc_rec = acq.purchase("B003", 2); 
+    
+    if (hc_rec.approved) {
+        std::cout << "Successfully purchased Hardcover Books!\n"
+                  << "Base Price: 50.00 each | Total Billed Cost (w/ 20% markup): " 
+                  << hc_rec.cost << "\n";
+    }
+
     return 0;
 }

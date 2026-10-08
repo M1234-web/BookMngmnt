@@ -217,6 +217,18 @@ static void testThesis() {
     CHECK(th.publisher() == "MIT");       // Mapped university to base publisher field
 }
 
+static void testQ4Pricing() {
+    // Paperback: Default pricing (100 * 3 = 300)
+    Book paperback("B3", "Standard Paper", {"Author"}, "111", "Pub", 2026, 
+                   Money::of(100), 1, Binding::Paperback);
+    CHECK(paperback.costFor(3) == Money::of(300));
+
+    // Hardcover: 20% markup on unit price (100 * 3 = 300 * 1.2 = 360)
+    Book hardcover("B4", "Fancy Edition", {"Author"}, "222", "Pub", 2026, 
+                   Money::of(100), 1, Binding::Hardcover);
+    CHECK(hardcover.costFor(3) == Money::of(360));
+}
+
 int main() {
     testMoney();
     testResourcesAndCost();
@@ -227,6 +239,7 @@ int main() {
     testEBook();
     testAudioBook();
     testThesis();
+    testQ4Pricing();
     
     std::cout << (g_checks - g_failures) << "/" << g_checks << " checks passed\n";
     return g_failures == 0 ? 0 : 1;
