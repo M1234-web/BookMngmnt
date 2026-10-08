@@ -229,6 +229,26 @@ static void testQ4Pricing() {
     CHECK(hardcover.costFor(3) == Money::of(360));
 }
 
+static void testQ5BulkDiscounts() {
+    // 1. Print item (Book): 10% off for 10+ copies
+    Book b("B_Q5", "Title", {"A"}, "123", "Pub", 2026, Money::of(100), 1, Binding::Paperback);
+    CHECK(b.costFor(9) == Money::of(900));  // Normal (100 * 9)
+    CHECK(b.costFor(10) == Money::of(900)); // Bulk discount: 100 * 10 = 1000 - 10% = 900
+    
+    // 2. Print item (Journal): 10% off for 10+ copies
+    Journal j("J_Q5", "Title", "Pub", 2026, Money::of(100), "123", 12, 1);
+    CHECK(j.costFor(9) == Money::of(900));  // Normal (100 * 9)
+    CHECK(j.costFor(10) == Money::of(900)); // Bulk discount: 100 * 10 = 1000 - 10% = 900
+    
+    // 3. Electronic item: 50% off beyond 50th seat
+    ElectronicResource e("E_Q5", "DB", "Pub", 2026, Money::of(10), "url", 
+                         LicenseModel::AnnualSubscription, Money::of(100));
+    // 50 seats = platform(100) + 50*10(500) = 600
+    CHECK(e.costFor(50) == Money::of(600));
+    // 60 seats = platform(100) + 50*10(500) + 10*5(50) = 650
+    CHECK(e.costFor(60) == Money::of(650));
+}
+
 int main() {
     testMoney();
     testResourcesAndCost();
@@ -240,6 +260,7 @@ int main() {
     testAudioBook();
     testThesis();
     testQ4Pricing();
+    testQ5BulkDiscounts();
     
     std::cout << (g_checks - g_failures) << "/" << g_checks << " checks passed\n";
     return g_failures == 0 ? 0 : 1;

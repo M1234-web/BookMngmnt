@@ -33,14 +33,19 @@ void Book::printDetails(std::ostream& os) const {
        << "\n";
 }
 
-// Q4: Apply 20% markup to Hardcover books
+// Q4 & Q5 EXTENSIONS: Hardcover markup + Bulk discount
 Money Book::costFor(int copies) const {
     requirePositive(copies);
     std::int64_t totalMinorUnits = (unitPrice() * copies).minorUnits();
     
+    // Q4: 20% markup for Hardcovers
     if (binding_ == Binding::Hardcover) {
-        // Multiply by 120 / 100 to add exactly 20% using integer math
         totalMinorUnits = (totalMinorUnits * 120) / 100;
+    }
+    
+    // Q5: 10% discount for 10 or more print copies
+    if (copies >= 10) {
+        totalMinorUnits = (totalMinorUnits * 90) / 100;
     }
     
     return Money::fromMinor(totalMinorUnits);

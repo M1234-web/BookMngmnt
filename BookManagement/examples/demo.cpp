@@ -148,5 +148,22 @@ int main() {
                   << hc_rec.cost << "\n";
     }
 
+    // NEW CODE FOR Q5: BULK DISCOUNTS DEMO
+
+    std::cout << "\n=== Q5: Bulk Discounts ===\n";
+    
+    // Print item 10% discount
+    const auto& q5_book = catalog.get("B001"); // Clean Code (Base price: 450.00)
+    std::cout << "Buying 10 copies of 'Clean Code' (Base price: 450.00 each).\n"
+              << "Expected cost without discount: 4500.00\n"
+              << "Cost with 10% bulk discount: " << q5_book.costFor(10) << "\n\n";
+              
+    // Electronic item 50% discount past 50 seats
+    const auto& q5_elec = catalog.get("R001"); // IEEE Xplore (Base: 150.00, Fee: 2000.00)
+    std::cout << "Buying 60 seats of 'IEEE Xplore'.\n"
+              << "Cost for first 50 seats: 2000.00 + (50 * 150.00) = 9500.00\n"
+              << "Cost for next 10 seats (half price = 75.00 each): 750.00\n"
+              << "Total calculated cost: " << q5_elec.costFor(60) << "\n";
+
     return 0;
 }

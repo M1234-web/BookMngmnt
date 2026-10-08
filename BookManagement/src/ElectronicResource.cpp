@@ -27,7 +27,21 @@ ElectronicResource::ElectronicResource(std::string id, std::string title,
 
 Money ElectronicResource::costFor(int seats) const {
     requirePositive(seats);
-    return platformFee_ + unitPrice() * seats;
+    
+    std::int64_t totalMinorUnits = platformFee_.minorUnits();
+    
+    if (seats <= 50) {
+        // 50 or fewer seats: Full price
+        totalMinorUnits += (unitPrice() * seats).minorUnits();
+    } else {
+        // Over 50 seats: First 50 are full price, the rest are half price
+        totalMinorUnits += (unitPrice() * 50).minorUnits();
+        
+        std::int64_t extraSeats = seats - 50;
+        totalMinorUnits += ((unitPrice() * extraSeats).minorUnits()) / 2;
+    }
+    
+    return Money::fromMinor(totalMinorUnits);
 }
 
 void ElectronicResource::printDetails(std::ostream& os) const {

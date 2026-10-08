@@ -18,8 +18,15 @@ Journal::Journal(std::string id, std::string title, std::string publisher, int y
 }
 
 Money Journal::costFor(int quantity) const {
-    requirePositive(quantity); // Use the protected validation from Resource
-    return unitPrice() * quantity * subscriptionYears_;
+    requirePositive(quantity); 
+    std::int64_t totalMinorUnits = (unitPrice() * quantity * subscriptionYears_).minorUnits();
+    
+    // Q5: 10% discount for 10 or more print copies
+    if (quantity >= 10) {
+        totalMinorUnits = (totalMinorUnits * 90) / 100;
+    }
+    
+    return Money::fromMinor(totalMinorUnits);
 }
 
 void Journal::printDetails(std::ostream& os) const {
