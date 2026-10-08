@@ -5,6 +5,7 @@
 
 #include "bookmgmt/bookmgmt.h"
 #include "bookmgmt/Journal.h"
+#include "bookmgmt/EBook.h"
 
 using namespace bookmgmt;
 
@@ -86,6 +87,20 @@ int main() {
     // 4. Print details to show overridden printDetails()
     std::cout << "Journal Details:\n" << catalog.get("J001");
     // -------------------------------------------------------------
+
+    std::cout << "\n=== Q2: EBook Demonstration ===\n";
+    catalog.emplace<EBook>("E001", "Clean Architecture E-Edition", 
+                           std::vector<std::string>{"Robert C. Martin"}, "978-0134494166", 
+                           "Prentice Hall", 2017, Money::of(45), "https://lib.example/clean-arch", 
+                           FileFormat::PDF, false, LicenseModel::Perpetual, Money::of(200));
+    
+    budget.setQuota(ResourceCategory::EBook, {10, Money::of(1000)});
+    auto ebookRec = acq.purchase("E001", 5); // 200 fee + (45 * 5) = 425
+    
+    if (ebookRec.approved) {
+        std::cout << "Successfully purchased EBook! Cost: " << ebookRec.cost << "\n";
+    }
+    std::cout << "EBook Details:\n" << catalog.get("E001");
 
     return 0;
 }

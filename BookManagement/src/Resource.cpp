@@ -11,6 +11,7 @@ const char* categoryName(ResourceCategory c) {
         case ResourceCategory::Book: return "Book";
         case ResourceCategory::ElectronicResource: return "ElectronicResource";
         case ResourceCategory::Journal: return "Journal";
+        case ResourceCategory::EBook: return "EBook";
     }
     return "Unknown";
 }

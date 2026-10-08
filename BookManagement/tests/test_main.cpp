@@ -7,6 +7,7 @@
 
 #include "bookmgmt/bookmgmt.h"
 #include "bookmgmt/Journal.h"
+#include "bookmgmt/EBook.h"
 
 using namespace bookmgmt;
 
@@ -179,6 +180,19 @@ static void testJournal() {
     CHECK_THROWS(j.costFor(0), std::invalid_argument);
 }
 
+static void testEBook() {
+    EBook ebook("EB1", "Advanced C++", {"Author One", "Author Two"}, "123-456", 
+                "TechPub", 2026, Money::of(50), "https://ebook.example", 
+                FileFormat::EPUB, true, LicenseModel::Perpetual, Money::of(100));
+    
+    CHECK(ebook.category() == ResourceCategory::EBook);
+    CHECK(ebook.isDigital() == true);
+    
+    // Pricing inherited from ElectronicResource: Platform fee(100) + (UnitPrice(50) * 3 seats) = 250
+    CHECK(ebook.costFor(3) == Money::of(250));
+    CHECK(ebook.drmProtected() == true);
+}
+
 int main() {
     testMoney();
     testResourcesAndCost();
@@ -186,6 +200,7 @@ int main() {
     testBudget();
     testAcquisition();
     testJournal();
+    testEBook();
     
     std::cout << (g_checks - g_failures) << "/" << g_checks << " checks passed\n";
     return g_failures == 0 ? 0 : 1;
