@@ -8,6 +8,8 @@
 #include "bookmgmt/bookmgmt.h"
 #include "bookmgmt/Journal.h"
 #include "bookmgmt/EBook.h"
+#include "bookmgmt/AudioBook.h"
+#include "bookmgmt/Thesis.h"
 
 using namespace bookmgmt;
 
@@ -193,6 +195,28 @@ static void testEBook() {
     CHECK(ebook.drmProtected() == true);
 }
 
+static void testAudioBook() {
+    AudioBook ab("AB1", "Dune", {"Frank Herbert"}, "Scott Brick", 1260, 
+                 "Macmillan", 2007, Money::of(25));
+                 
+    CHECK(ab.category() == ResourceCategory::AudioBook);
+    CHECK(ab.isDigital() == true);
+    CHECK(ab.costFor(3) == Money::of(75)); // 25 * 3 copies = 75
+    
+    // Check validation: Duration must be positive
+    CHECK_THROWS(AudioBook("AB2", "Test", {"A"}, "N", 0, "P", 2020, Money::of(10)), std::invalid_argument);
+}
+
+static void testThesis() {
+    Thesis th("TH1", "C++ Compilation Speed", "Jane Doe", 
+              "MIT", "PhD", "Dr. Smith", 2026);
+              
+    CHECK(th.category() == ResourceCategory::Thesis);
+    CHECK(th.isDigital() == false);
+    CHECK(th.costFor(5) == Money::of(0)); // Theses are always free!
+    CHECK(th.publisher() == "MIT");       // Mapped university to base publisher field
+}
+
 int main() {
     testMoney();
     testResourcesAndCost();
@@ -201,6 +225,8 @@ int main() {
     testAcquisition();
     testJournal();
     testEBook();
+    testAudioBook();
+    testThesis();
     
     std::cout << (g_checks - g_failures) << "/" << g_checks << " checks passed\n";
     return g_failures == 0 ? 0 : 1;

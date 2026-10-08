@@ -6,6 +6,8 @@
 #include "bookmgmt/bookmgmt.h"
 #include "bookmgmt/Journal.h"
 #include "bookmgmt/EBook.h"
+#include "bookmgmt/AudioBook.h"
+#include "bookmgmt/Thesis.h"
 
 using namespace bookmgmt;
 
@@ -101,6 +103,34 @@ int main() {
         std::cout << "Successfully purchased EBook! Cost: " << ebookRec.cost << "\n";
     }
     std::cout << "EBook Details:\n" << catalog.get("E001");
+
+    // NEW CODE FOR Q3: DEMONSTRATING AUDIOBOOK & THESIS
+    std::cout << "\n=== Q3: AudioBook & Thesis Demonstration ===\n";
+    
+    // 1. Add them to the catalog
+    catalog.emplace<AudioBook>("A001", "Project Hail Mary", std::vector<std::string>{"Andy Weir"},
+                               "Ray Porter", 960, "Audible", 2021, Money::of(30));
+    catalog.emplace<Thesis>("T001", "Memory Management in C++", "Alice Smith",
+                            "Stanford University", "PhD", "Dr. Bob", 2026);
+    
+    // 2. Set budgets
+    budget.setQuota(ResourceCategory::AudioBook, {10, Money::of(500)});
+    budget.setQuota(ResourceCategory::Thesis, {10, Money::of(0)}); // They are free!
+    
+    // 3. Purchase them
+    auto ab_rec = acq.purchase("A001", 2); // 30 * 2 = 60
+    if (ab_rec.approved) {
+        std::cout << "Successfully purchased AudioBook! Cost: " << ab_rec.cost << "\n";
+    }
+    
+    auto th_rec = acq.purchase("T001", 1); // Cost = 0
+    if (th_rec.approved) {
+        std::cout << "Successfully acquired Thesis! Cost: " << th_rec.cost << "\n";
+    }
+
+    // 4. Print details to verify formatting
+    std::cout << "\nAudioBook Details:\n" << catalog.get("A001");
+    std::cout << "\nThesis Details:\n" << catalog.get("T001");
 
     return 0;
 }
