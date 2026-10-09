@@ -139,4 +139,18 @@ void Budget::print(std::ostream& os) const {
     }
 }
 
+// Q8: Refund budget and quota limits
+void Budget::refund(ResourceCategory c, int units, Money cost, const std::string& id, bool removeTitle) {
+    Usage& u = usage_[c];
+    u.units -= units;
+    u.spent -= cost;
+    
+    // If holdings drop to zero, free up the title slot!
+    if (removeTitle && !id.empty()) {
+        u.titles.erase(id);
+    }
+    
+    spent_ -= cost;
+}
+
 }  // namespace bookmgmt

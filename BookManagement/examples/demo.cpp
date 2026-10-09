@@ -214,6 +214,14 @@ int main() {
     attemptPurchase("B004"); // Already owned, doesn't count against limit! (Should succeed)
     attemptPurchase("B006"); // 6th title (Should fail)
 
+    //Q8: CANCELLATION DEMO
+    std::cout << "\n=== Q8: Cancellation Demonstration ===\n";
+    std::cout << "Canceling Order #1 (Clean Code x4, 1800.00)...\n";
+    acq.cancel(1);
+    
+    std::cout << "\n=== Final Acquisition Report (After Cancellation) ===\n";
+    acq.printReport(std::cout);
+
     return 0;
 }
 

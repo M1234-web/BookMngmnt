@@ -27,6 +27,10 @@ struct PurchaseRecord {
     bool approved;
     std::string reason;  // why it was rejected; empty if approved
 
+    // Q8: Tracking cancellations safely
+    bool isCancellation = false;
+    int cancelledOrderNo = -1;
+
     //total billed amount
     Money totalCost() const { return cost + tax; }
 };
@@ -40,6 +44,8 @@ public:
 
     //Calculating tax for eac category
     static Money calculateTax(ResourceCategory c, Money preTaxCost);
+
+    const PurchaseRecord& cancel(int orderNo);
 
     // Price of a request without buying anything. Throws NotFoundError.
     Money quote(const std::string& id, int quantity) const;

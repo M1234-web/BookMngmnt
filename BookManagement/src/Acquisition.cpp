@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "bookmgmt/Acquisition.h"
 
 #include <iomanip>
@@ -104,21 +105,72 @@ Money AcquisitionManager::totalSpent() const {
     return sum;
 }
 
+const PurchaseRecord& AcquisitionManager::cancel(int orderNo) {
+    // 1. Find the original order
+    auto it = std::find_if(history_.begin(), history_.end(), 
+        [orderNo](const PurchaseRecord& r) { return r.orderNo == orderNo; });
+    
+    if (it == history_.end()) throw std::invalid_argument("order not found");
+    if (!it->approved) throw std::invalid_argument("cannot cancel a rejected order");
+    if (it->isCancellation) throw std::invalid_argument("cannot cancel a cancellation record");
+    
+    // Ensure we haven't already cancelled this order!
+    bool alreadyCancelled = std::any_of(history_.begin(), history_.end(), 
+        [orderNo](const PurchaseRecord& r) { return r.isCancellation && r.cancelledOrderNo == orderNo; });
+    if (alreadyCancelled) throw std::invalid_argument("order already cancelled");
+
+    std::string id = it->resourceId;
+    int qty = it->quantity;
+    Money cost = it->cost;
+    Money tax = it->tax;
+    ResourceCategory cat = it->category;
+
+    // 2. Reduce holdings in Catalog
+    catalog_.addHoldings(id, -qty);
+    
+    // 3. Check if holdings dropped to 0 to free up the title quota slot!
+    bool removeTitle = (catalog_.holdings(id) == 0);
+    
+    // 4. Refund budget and quota
+    budget_.refund(cat, qty, cost + tax, id, removeTitle);
+
+    // 5. Create cancellation record (invert quantity and cost to naturally balance the totalSpent math)
+    PurchaseRecord cancelRec = *it; 
+    cancelRec.orderNo = nextOrderNo_++;
+    cancelRec.quantity = -qty;
+    cancelRec.cost = cost * -1;
+    cancelRec.tax = tax * -1;
+    cancelRec.isCancellation = true;
+    cancelRec.cancelledOrderNo = orderNo;
+    
+    history_.push_back(cancelRec);
+    return history_.back();
+}
+
 void AcquisitionManager::printReport(std::ostream& os) const {
     os << "Order history (" << history_.size() << " orders)\n";
-    // Q6: Updated header to include Pre-tax and Tax columns
     os << "  #    Status      ID     Qty    Pre-Tax        Tax      Total         Title\n";
     for (const auto& rec : history_) {
+        // Q8: Determine exactly what status text to show
+        std::string status = rec.isCancellation ? "CANCELLED " : (rec.approved ? "APPROVED  " : "REJECTED  ");
+        
         os << "  #" << std::setw(3) << std::left << rec.orderNo << " "
-           << (rec.approved ? "APPROVED  " : "REJECTED  ") << " " << std::setw(6)
+           << status << " " << std::setw(6)
            << rec.resourceId << " x" << std::setw(3) << rec.quantity << " "
            << std::setw(10) << std::right << rec.cost.toString() << "  "
            << std::setw(8) << rec.tax.toString() << "  "
            << std::setw(10) << rec.totalCost().toString() << "  "
            << std::left << rec.title;
-        if (!rec.approved) os << "\n        reason: " << rec.reason;
+           
+        // Q8: Show the custom reason based on the record type
+        if (!rec.approved && !rec.isCancellation) {
+            os << "\n        reason: " << rec.reason;
+        } else if (rec.isCancellation) {
+            os << "\n        reason: reversed order #" << rec.cancelledOrderNo;
+        }
         os << "\n";
     }
+    // Negative costs in cancellation records naturally subtract from this!
     os << "Total spent (incl. tax): " << totalSpent() << "\n";
 }
 

@@ -292,6 +292,30 @@ static void testQ7TitleLimits() {
     CHECK(!acq.canPurchase("B3", 1)); // 3rd title -> REJECTED
 }
 
+static void testQ8Cancellation() {
+    Catalog c;
+    c.emplace<Book>("B1", "Book 1", std::vector<std::string>{"A"}, "1", "P", 2026, Money::of(100));
+    Budget b(Money::of(1000));
+    AcquisitionManager acq(c, b);
+
+    // Buy 2 copies
+    auto rec = acq.purchase("B1", 2);
+    CHECK(c.holdings("B1") == 2);
+    CHECK(b.spent() == Money::of(200));
+
+    // Cancel order
+    auto cancelRec = acq.cancel(rec.orderNo);
+    
+    CHECK(c.holdings("B1") == 0); // Holdings reduced
+    CHECK(b.spent() == Money::of(0)); // Budget refunded
+    CHECK(cancelRec.isCancellation == true); // Flag set
+    CHECK(cancelRec.quantity == -2); // Negative quantity
+    CHECK(cancelRec.totalCost() == Money::of(-200)); // Negative total
+    
+    // Confirm we cannot cancel it a second time!
+    CHECK_THROWS(acq.cancel(rec.orderNo), std::invalid_argument);
+}
+
 int main() {
     testMoney();
     testResourcesAndCost();
@@ -306,6 +330,7 @@ int main() {
     testQ5BulkDiscounts();
     testQ6Taxes();
     testQ7TitleLimits();
+    testQ8Cancellation();
     
     std::cout << (g_checks - g_failures) << "/" << g_checks << " checks passed\n";
     return g_failures == 0 ? 0 : 1;

@@ -52,6 +52,8 @@ public:
     // (and changes nothing) if it would not fit.
     void commit(ResourceCategory c, int units, Money cost, const std::string& id = "");
 
+    void refund(ResourceCategory c, int units, Money cost, const std::string& id = "", bool removeTitle = false);
+
     void print(std::ostream& os) const;
 
 private:
