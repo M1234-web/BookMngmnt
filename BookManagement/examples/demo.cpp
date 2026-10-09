@@ -222,6 +222,22 @@ int main() {
     std::cout << "\n=== Final Acquisition Report (After Cancellation) ===\n";
     acq.printReport(std::cout);
 
+    //Q9: DEPARTMENTS DEMO
+
+    std::cout << "\n=== Q9: Department Budgets Demonstration ===\n";
+    bookmgmt::Budget csBudget(bookmgmt::Money::of(10000));
+    csBudget.setQuota(bookmgmt::ResourceCategory::ElectronicResource, {100, bookmgmt::Money::of(8000)});
+    acq.addDepartment("CompSci", csBudget);
+    
+    std::cout << "Purchasing IEEE Xplore explicitly for CompSci department...\n";
+    acq.purchase("R001", 5, "CompSci");
+    
+    std::cout << "CompSci Budget Spent: " << csBudget.spent() << "\n";
+    std::cout << "Main Budget Spent (Untouched by CS order): " << budget.spent() << "\n";
+    
+    std::cout << "\n=== Final Acquisition Report (Notice the Dept column!) ===\n";
+    acq.printReport(std::cout);
+
     return 0;
 }
 

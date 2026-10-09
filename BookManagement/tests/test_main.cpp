@@ -316,6 +316,30 @@ static void testQ8Cancellation() {
     CHECK_THROWS(acq.cancel(rec.orderNo), std::invalid_argument);
 }
 
+static void testQ9Departments() {
+    Catalog c;
+    c.emplace<Book>("B1", "Book 1", std::vector<std::string>{"A"}, "1", "P", 2026, Money::of(100));
+    
+    Budget mainBudget(Money::of(1000));
+    AcquisitionManager acq(c, mainBudget); // Main is automatically registered
+    
+    Budget physicsBudget(Money::of(200));
+    acq.addDepartment("Physics", physicsBudget);
+    
+    // Test that the Physics budget works
+    CHECK(acq.canPurchase("B1", 1, "Physics"));
+    acq.purchase("B1", 1, "Physics");
+    CHECK(physicsBudget.spent() == Money::of(100));
+    CHECK(mainBudget.spent() == Money::of(0)); // Main is untouched
+    
+    // Exceed Physics budget
+    CHECK(!acq.canPurchase("B1", 2, "Physics"));
+    
+    // Fallback default still charges Main
+    acq.purchase("B1", 5); 
+    CHECK(mainBudget.spent() == Money::of(500));
+}
+
 int main() {
     testMoney();
     testResourcesAndCost();
@@ -331,6 +355,7 @@ int main() {
     testQ6Taxes();
     testQ7TitleLimits();
     testQ8Cancellation();
+    testQ9Departments();
     
     std::cout << (g_checks - g_failures) << "/" << g_checks << " checks passed\n";
     return g_failures == 0 ? 0 : 1;

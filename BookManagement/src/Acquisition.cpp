@@ -26,7 +26,13 @@ Money AcquisitionManager::calculateTax(ResourceCategory c, Money baseCost) {
 }
 
 AcquisitionManager::AcquisitionManager(Catalog& catalog, Budget& budget)
-    : catalog_(catalog), budget_(budget) {}
+    : catalog_(catalog), budget_(budget) {
+    budgets_["Main"] = &budget; // Q9: Register the original budget as "Main"
+}
+
+void AcquisitionManager::addDepartment(const std::string& deptName, Budget& b) {
+    budgets_[deptName] = &b;
+}
 
 Money AcquisitionManager::quote(const std::string& id, int quantity) const {
     return catalog_.get(id).costFor(quantity);
@@ -34,14 +40,23 @@ Money AcquisitionManager::quote(const std::string& id, int quantity) const {
 
 bool AcquisitionManager::canPurchase(const std::string& id, int quantity,
                                      std::string* reason) const {
+    return canPurchase(id, quantity, "Main", reason);
+}
+
+// Q9: Department-aware canPurchase
+bool AcquisitionManager::canPurchase(const std::string& id, int quantity, 
+                                     const std::string& dept, std::string* reason) const {
     std::string why;
-    if (const Resource* r = catalog_.find(id)) {
-        if (quantity <= 0)
+    auto it = budgets_.find(dept);
+    if (it == budgets_.end()) {
+        why = "department not found: " + dept;
+    } else if (const Resource* r = catalog_.find(id)) {
+        if (quantity <= 0) {
             why = "quantity must be positive";
-        else {
+        } else {
             Money cost = r->costFor(quantity); 
             Money tax = calculateTax(r->category(), cost); 
-            why = budget_.check(r->category(), quantity, cost + tax, id);
+            why = it->second->check(r->category(), quantity, cost + tax, id);
         }
     } else {
         why = "resource not found: " + id;
@@ -52,21 +67,27 @@ bool AcquisitionManager::canPurchase(const std::string& id, int quantity,
 
 PurchaseRecord& AcquisitionManager::record(const Resource* r, const std::string& id,
                                            int qty, Money cost, Money tax, bool approved,
-                                           std::string reason) {
+                                           std::string reason, const std::string& dept) {
     history_.push_back(PurchaseRecord{
         nextOrderNo_++, id, r ? r->title() : std::string("(unknown)"),
         r ? r->category() : ResourceCategory::Book, qty, cost, tax, approved,
-        std::move(reason)});
+        std::move(reason), false, -1, dept});
     return history_.back();
 }
 
-const PurchaseRecord& AcquisitionManager::purchase(const std::string& id, int quantity) {
-    const Resource& r = catalog_.get(id);        // may throw NotFoundError
-    const Money cost = r.costFor(quantity);      // may throw invalid_argument
-    const Money tax = calculateTax(r.category(), cost);
-    budget_.commit(r.category(), quantity, cost + tax, id);  // may throw quota/budget errors
+const PurchaseRecord& AcquisitionManager::purchase(const std::string& id, int quantity, const std::string& dept) {
+    auto it = budgets_.find(dept);
+    if (it == budgets_.end()) throw std::invalid_argument("department not found: " + dept);
+    Budget* targetBudget = it->second;
+
+    const Resource& r = catalog_.get(id);        
+    const Money cost = r.costFor(quantity); 
+    const Money tax = calculateTax(r.category(), cost); 
+    
+    targetBudget->commit(r.category(), quantity, cost + tax, id); 
     catalog_.addHoldings(id, quantity);
-    return record(&r, id, quantity, cost, tax, true, {});
+    
+    return record(&r, id, quantity, cost, tax, true, "", dept);
 }
 
 std::vector<PurchaseRecord> AcquisitionManager::processBatch(
@@ -76,22 +97,28 @@ std::vector<PurchaseRecord> AcquisitionManager::processBatch(
     for (const auto& req : reqs) {
         const Resource* r = catalog_.find(req.resourceId);
         Money cost;
-        Money tax;
+        Money tax; 
         std::string why;
+        
+        auto it = budgets_.find(req.department);
+        Budget* targetBudget = (it != budgets_.end()) ? it->second : nullptr;
+
         if (!r) {
             why = "resource not found: " + req.resourceId;
+        } else if (!targetBudget) {
+            why = "department not found: " + req.department;
         } else if (req.quantity <= 0) {
             why = "quantity must be positive";
         } else {
-            cost = r->costFor(req.quantity);
-            tax = calculateTax(r->category(), cost);
-            why = budget_.check(r->category(), req.quantity, cost + tax, req.resourceId);
+            cost = r->costFor(req.quantity); 
+            tax = calculateTax(r->category(), cost); 
+            why = targetBudget->check(r->category(), req.quantity, cost + tax, req.resourceId); 
         }
 
         if (why.empty()) {
-            results.push_back(purchase(req.resourceId, req.quantity));
+            results.push_back(purchase(req.resourceId, req.quantity, req.department));
         } else {
-            results.push_back(record(r, req.resourceId, req.quantity, cost, tax, false, why));
+            results.push_back(record(r, req.resourceId, req.quantity, cost, tax, false, why, req.department));
         }
     }
     return results;
@@ -106,7 +133,6 @@ Money AcquisitionManager::totalSpent() const {
 }
 
 const PurchaseRecord& AcquisitionManager::cancel(int orderNo) {
-    // 1. Find the original order
     auto it = std::find_if(history_.begin(), history_.end(), 
         [orderNo](const PurchaseRecord& r) { return r.orderNo == orderNo; });
     
@@ -114,7 +140,6 @@ const PurchaseRecord& AcquisitionManager::cancel(int orderNo) {
     if (!it->approved) throw std::invalid_argument("cannot cancel a rejected order");
     if (it->isCancellation) throw std::invalid_argument("cannot cancel a cancellation record");
     
-    // Ensure we haven't already cancelled this order!
     bool alreadyCancelled = std::any_of(history_.begin(), history_.end(), 
         [orderNo](const PurchaseRecord& r) { return r.isCancellation && r.cancelledOrderNo == orderNo; });
     if (alreadyCancelled) throw std::invalid_argument("order already cancelled");
@@ -124,17 +149,17 @@ const PurchaseRecord& AcquisitionManager::cancel(int orderNo) {
     Money cost = it->cost;
     Money tax = it->tax;
     ResourceCategory cat = it->category;
+    std::string dept = it->department; // Grab original dept
 
-    // 2. Reduce holdings in Catalog
     catalog_.addHoldings(id, -qty);
-    
-    // 3. Check if holdings dropped to 0 to free up the title quota slot!
     bool removeTitle = (catalog_.holdings(id) == 0);
     
-    // 4. Refund budget and quota
-    budget_.refund(cat, qty, cost + tax, id, removeTitle);
+    // Refund the CORRECT department
+    auto budgetIt = budgets_.find(dept);
+    if (budgetIt != budgets_.end()) {
+        budgetIt->second->refund(cat, qty, cost + tax, id, removeTitle);
+    }
 
-    // 5. Create cancellation record (invert quantity and cost to naturally balance the totalSpent math)
     PurchaseRecord cancelRec = *it; 
     cancelRec.orderNo = nextOrderNo_++;
     cancelRec.quantity = -qty;
@@ -142,6 +167,7 @@ const PurchaseRecord& AcquisitionManager::cancel(int orderNo) {
     cancelRec.tax = tax * -1;
     cancelRec.isCancellation = true;
     cancelRec.cancelledOrderNo = orderNo;
+    // department carries over from the copied record!
     
     history_.push_back(cancelRec);
     return history_.back();
@@ -149,9 +175,9 @@ const PurchaseRecord& AcquisitionManager::cancel(int orderNo) {
 
 void AcquisitionManager::printReport(std::ostream& os) const {
     os << "Order history (" << history_.size() << " orders)\n";
-    os << "  #    Status      ID     Qty    Pre-Tax        Tax      Total         Title\n";
+    // Added Dept Column
+    os << "  #    Status      ID     Qty    Pre-Tax        Tax      Total       Dept        Title\n";
     for (const auto& rec : history_) {
-        // Q8: Determine exactly what status text to show
         std::string status = rec.isCancellation ? "CANCELLED " : (rec.approved ? "APPROVED  " : "REJECTED  ");
         
         os << "  #" << std::setw(3) << std::left << rec.orderNo << " "
@@ -160,9 +186,9 @@ void AcquisitionManager::printReport(std::ostream& os) const {
            << std::setw(10) << std::right << rec.cost.toString() << "  "
            << std::setw(8) << rec.tax.toString() << "  "
            << std::setw(10) << rec.totalCost().toString() << "  "
+           << std::setw(10) << std::left << rec.department << "  " // Print Dept
            << std::left << rec.title;
            
-        // Q8: Show the custom reason based on the record type
         if (!rec.approved && !rec.isCancellation) {
             os << "\n        reason: " << rec.reason;
         } else if (rec.isCancellation) {
@@ -170,7 +196,6 @@ void AcquisitionManager::printReport(std::ostream& os) const {
         }
         os << "\n";
     }
-    // Negative costs in cancellation records naturally subtract from this!
     os << "Total spent (incl. tax): " << totalSpent() << "\n";
 }
 
