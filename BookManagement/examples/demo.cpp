@@ -148,7 +148,7 @@ int main() {
                   << hc_rec.cost << "\n";
     }
 
-    // NEW CODE FOR Q5: BULK DISCOUNTS DEMO
+    //Q5: BULK DISCOUNTS DEMO
 
     std::cout << "\n=== Q5: Bulk Discounts ===\n";
     
@@ -165,5 +165,28 @@ int main() {
               << "Cost for next 10 seats (half price = 75.00 each): 750.00\n"
               << "Total calculated cost: " << q5_elec.costFor(60) << "\n";
 
+    //Q6: TAXES DEMO
+
+    std::cout << "\n=== Q6: Taxes Demonstration ===\n";
+    
+    // Configure taxes
+    bookmgmt::AcquisitionManager::printTaxRatePercent = 5;       // 5% for Print
+    bookmgmt::AcquisitionManager::electronicTaxRatePercent = 10; // 10% for Electronic
+    
+    std::cout << "Configured Print Tax = 5%, Electronic Tax = 10%.\n";
+    
+    // Buying a print item with tax
+    auto tax_book_rec = acq.purchase("B001", 1); 
+    if (tax_book_rec.approved) {
+        std::cout << "Bought 'Clean Code' (Base Price: 450.00).\n"
+                  << "Tax applied: " << tax_book_rec.tax << " | Total Charged to Budget: " 
+                  << tax_book_rec.totalCost() << "\n\n";
+    }
+
+    // Re-print the report to show the new pre-tax/post-tax columns!
+    std::cout << "=== Final Acquisition Report (with Tax Columns) ===\n";
+    acq.printReport(std::cout);
+
     return 0;
 }
+

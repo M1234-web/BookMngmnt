@@ -23,13 +23,23 @@ struct PurchaseRecord {
     ResourceCategory category;
     int quantity;
     Money cost;
+    Money tax;
     bool approved;
     std::string reason;  // why it was rejected; empty if approved
+
+    //total billed amount
+    Money totalCost() const { return cost + tax; }
 };
 
 class AcquisitionManager {
 public:
     AcquisitionManager(Catalog& catalog, Budget& budget);
+
+    static int printTaxRatePercent;
+    static int electronicTaxRatePercent;
+
+    //Calculating tax for eac category
+    static Money calculateTax(ResourceCategory c, Money preTaxCost);
 
     // Price of a request without buying anything. Throws NotFoundError.
     Money quote(const std::string& id, int quantity) const;
@@ -55,7 +65,7 @@ public:
 
 private:
     PurchaseRecord& record(const Resource* r, const std::string& id, int qty,
-                           Money cost, bool approved, std::string reason);
+                           Money cost, Money tax, bool approved, std::string reason);
 
     Catalog& catalog_;
     Budget& budget_;

@@ -249,6 +249,25 @@ static void testQ5BulkDiscounts() {
     CHECK(e.costFor(60) == Money::of(650));
 }
 
+static void testQ6Taxes() {
+    Catalog c;
+    c.emplace<Book>("B1", "Book", std::vector<std::string>{"A"}, "123", "Pub", 2026, Money::of(100)); 
+    Budget b(Money::of(1000));
+    AcquisitionManager acq(c, b);
+
+    // Set taxes to 10%
+    AcquisitionManager::printTaxRatePercent = 10;
+    
+    auto rec = acq.purchase("B1", 1);
+    CHECK(rec.cost == Money::of(100));   // Pre-tax cost
+    CHECK(rec.tax == Money::of(10));     // 10% Tax
+    CHECK(rec.totalCost() == Money::of(110)); // Total
+    CHECK(b.spent() == Money::of(110));  // Budget checked post-tax
+
+    // Reset taxes so other tests don't break
+    AcquisitionManager::printTaxRatePercent = 0;
+}
+
 int main() {
     testMoney();
     testResourcesAndCost();
@@ -261,6 +280,7 @@ int main() {
     testThesis();
     testQ4Pricing();
     testQ5BulkDiscounts();
+    testQ6Taxes();
     
     std::cout << (g_checks - g_failures) << "/" << g_checks << " checks passed\n";
     return g_failures == 0 ? 0 : 1;
