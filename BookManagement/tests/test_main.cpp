@@ -366,6 +366,35 @@ static void testQ10Rollover() {
     CHECK(u.titles.empty());  // Reset!
 }
 
+static void testQ11BatchTransaction() {
+    Catalog c;
+    c.emplace<Book>("B1", "Book 1", std::vector<std::string>{"A"}, "1", "P", 2026, Money::of(100));
+    c.emplace<Book>("B2", "Book 2", std::vector<std::string>{"B"}, "2", "P", 2026, Money::of(200));
+    
+    Budget b(Money::of(250)); // Only enough money for B1 and part of B2
+    AcquisitionManager acq(c, b);
+
+    std::vector<PurchaseRequest> batch = {
+        {"B1", 1, "Main"}, // Costs 100 (Pass)
+        {"B1", 1, "Main"}, // Costs 100 (Pass)
+        {"B2", 1, "Main"}  // Costs 200 (Fails: exceeds total 250 budget)
+    };
+
+    // 1. Process as All-Or-Nothing
+    auto results = acq.processBatch(batch, true);
+    
+    // Everything should be rejected, and budget perfectly untouched!
+    CHECK(results.size() == 3);
+    for (const auto& rec : results) {
+        CHECK(!rec.approved);
+        // It passes the exact reason back to the user
+        CHECK(rec.reason.find("batch failed") != std::string::npos); 
+    }
+    
+    CHECK(b.spent() == Money::of(0)); // Budget untouched
+    CHECK(c.holdings("B1") == 0);     // Holdings untouched
+}
+
 int main() {
     testMoney();
     testResourcesAndCost();
@@ -383,6 +412,7 @@ int main() {
     testQ8Cancellation();
     testQ9Departments();
     testQ10Rollover();
+    testQ11BatchTransaction();
     
     std::cout << (g_checks - g_failures) << "/" << g_checks << " checks passed\n";
     return g_failures == 0 ? 0 : 1;

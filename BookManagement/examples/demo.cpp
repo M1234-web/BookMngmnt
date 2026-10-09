@@ -252,6 +252,23 @@ int main() {
     std::cout << "Next Year's Budget (Fresh usage, quotas intact!):\n";
     nextYearBudget.print(std::cout);
 
+    //Q11: ALL-OR-NOTHING BATCH DEMO
+  
+    std::cout << "\n=== Q11: All-Or-Nothing Batch Demo ===\n";
+    
+    // Create a batch where the third item is completely invalid
+    std::vector<bookmgmt::PurchaseRequest> trickyBatch = {
+        {"B001", 1, "Main"}, // Valid
+        {"B003", 1, "Main"}, // Valid
+        {"X999", 1, "Main"}  // INVALID ID! Will kill the batch.
+    };
+
+    std::cout << "Attempting tricky batch (All-Or-Nothing = TRUE)...\n";
+    acq.processBatch(trickyBatch, true);
+
+    std::cout << "\n=== Final Acquisition Report (Notice the batch rejections!) ===\n";
+    acq.printReport(std::cout);
+
     return 0;
 }
 

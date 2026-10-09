@@ -91,37 +91,112 @@ const PurchaseRecord& AcquisitionManager::purchase(const std::string& id, int qu
 }
 
 std::vector<PurchaseRecord> AcquisitionManager::processBatch(
-    const std::vector<PurchaseRequest>& reqs) {
-    std::vector<PurchaseRecord> results;
-    results.reserve(reqs.size());
-    for (const auto& req : reqs) {
-        const Resource* r = catalog_.find(req.resourceId);
-        Money cost;
-        Money tax; 
-        std::string why;
+    const std::vector<PurchaseRequest>& reqs, bool allOrNothing) {
+    
+    if (!allOrNothing) {
+        // --- ORIGINAL BATCH LOGIC (Processes independently) ---
+        std::vector<PurchaseRecord> results;
+        results.reserve(reqs.size());
+        for (const auto& req : reqs) {
+            const Resource* r = catalog_.find(req.resourceId);
+            Money cost;
+            Money tax; 
+            std::string why;
+            
+            auto it = budgets_.find(req.department);
+            Budget* targetBudget = (it != budgets_.end()) ? it->second : nullptr;
+
+            if (!r) {
+                why = "resource not found: " + req.resourceId;
+            } else if (!targetBudget) {
+                why = "department not found: " + req.department;
+            } else if (req.quantity <= 0) {
+                why = "quantity must be positive";
+            } else {
+                cost = r->costFor(req.quantity); 
+                tax = calculateTax(r->category(), cost); 
+                why = targetBudget->check(r->category(), req.quantity, cost + tax, req.resourceId); 
+            }
+
+            if (why.empty()) {
+                results.push_back(purchase(req.resourceId, req.quantity, req.department));
+            } else {
+                results.push_back(record(r, req.resourceId, req.quantity, cost, tax, false, why, req.department));
+            }
+        }
+        return results;
         
-        auto it = budgets_.find(req.department);
-        Budget* targetBudget = (it != budgets_.end()) ? it->second : nullptr;
+    } else {
+        // --- Q11: ALL-OR-NOTHING TRANSACTION LOGIC ---
+        struct CommitLog {
+            std::string id; int qty; ResourceCategory cat; Money cost; Money tax; std::string dept; bool wasZero;
+        };
+        std::vector<CommitLog> commits;
+        bool failed = false;
+        std::string firstFailureWhy;
 
-        if (!r) {
-            why = "resource not found: " + req.resourceId;
-        } else if (!targetBudget) {
-            why = "department not found: " + req.department;
-        } else if (req.quantity <= 0) {
-            why = "quantity must be positive";
-        } else {
-            cost = r->costFor(req.quantity); 
-            tax = calculateTax(r->category(), cost); 
-            why = targetBudget->check(r->category(), req.quantity, cost + tax, req.resourceId); 
+        for (const auto& req : reqs) {
+            const Resource* r = catalog_.find(req.resourceId);
+            Money cost; Money tax; std::string why;
+            
+            auto it = budgets_.find(req.department);
+            Budget* targetBudget = (it != budgets_.end()) ? it->second : nullptr;
+
+            if (!r) why = "resource not found: " + req.resourceId;
+            else if (!targetBudget) why = "department not found: " + req.department;
+            else if (req.quantity <= 0) why = "quantity must be positive";
+            else {
+                cost = r->costFor(req.quantity);
+                tax = calculateTax(r->category(), cost);
+                why = targetBudget->check(r->category(), req.quantity, cost + tax, req.resourceId);
+            }
+
+            if (!why.empty()) {
+                failed = true;
+                firstFailureWhy = why; 
+                break; // Stop immediately on first failure
+            }
+
+            // Temporarily commit so cumulative budget checks inside the same batch work correctly
+            bool wasZero = (catalog_.holdings(req.resourceId) == 0);
+            targetBudget->commit(r->category(), req.quantity, cost + tax, req.resourceId);
+            catalog_.addHoldings(req.resourceId, req.quantity);
+            commits.push_back({req.resourceId, req.quantity, r->category(), cost, tax, req.department, wasZero});
         }
 
-        if (why.empty()) {
-            results.push_back(purchase(req.resourceId, req.quantity, req.department));
+        std::vector<PurchaseRecord> results;
+        results.reserve(reqs.size());
+
+        if (failed) {
+            // 1. Rollback all temporary commits in reverse order
+            for (auto it = commits.rbegin(); it != commits.rend(); ++it) {
+                catalog_.addHoldings(it->id, -(it->qty));
+                bool removeTitle = it->wasZero && (catalog_.holdings(it->id) == 0);
+                budgets_[it->dept]->refund(it->cat, it->qty, it->cost + it->tax, it->id, removeTitle);
+            }
+            
+            // 2. Generate rejected records for the whole batch, showing the error that killed it
+            std::string rejectReason = "batch failed: " + firstFailureWhy;
+            for (const auto& req : reqs) {
+                const Resource* r = catalog_.find(req.resourceId);
+                Money cost; Money tax;
+                if (r && req.quantity > 0) {
+                    cost = r->costFor(req.quantity);
+                    tax = calculateTax(r->category(), cost);
+                }
+                results.push_back(record(r, req.resourceId, req.quantity, cost, tax, false, rejectReason, req.department));
+            }
         } else {
-            results.push_back(record(r, req.resourceId, req.quantity, cost, tax, false, why, req.department));
+            // All passed! Just write them to the permanent history
+            for (size_t i = 0; i < reqs.size(); ++i) {
+                const auto& req = reqs[i];
+                const auto& c = commits[i];
+                const Resource* r = catalog_.find(req.resourceId);
+                results.push_back(record(r, req.resourceId, req.quantity, c.cost, c.tax, true, "", req.department));
+            }
         }
+        return results;
     }
-    return results;
 }
 
 Money AcquisitionManager::totalSpent() const {
