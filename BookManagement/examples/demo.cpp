@@ -187,6 +187,33 @@ int main() {
     std::cout << "=== Final Acquisition Report (with Tax Columns) ===\n";
     acq.printReport(std::cout);
 
+    // Q7: TITLE LIMITS DEMO
+
+    std::cout << "\n=== Q7: Title Limits Demonstration ===\n";
+    catalog.emplace<Book>("B004", "Refactoring", std::vector<std::string>{"Fowler"}, "000", "Pub", 1999, Money::of(50));
+    catalog.emplace<Book>("B005", "Pragmatic Programmer", std::vector<std::string>{"Hunt"}, "001", "Pub", 1999, Money::of(50));
+    catalog.emplace<Book>("B006", "Clean Coder", std::vector<std::string>{"Martin"}, "002", "Pub", 2011, Money::of(50));
+    
+    // We already bought B001, B002, and B003 earlier in the demo.
+    // Set limit to 5 so we have exactly enough room for 2 more new titles!
+    budget.setQuota(ResourceCategory::Book, {100, Money::of(10000), 5});
+    
+    // Helper lambda to safely attempt a purchase and catch exceptions
+    auto attemptPurchase = [&](const std::string& id) {
+        std::cout << "Attempting to buy " << id << "... ";
+        try {
+            acq.purchase(id, 1);
+            std::cout << "APPROVED\n";
+        } catch (const bookmgmt::QuotaExceededError& e) {
+            std::cout << "REJECTED\n  Reason: " << e.what() << "\n";
+        }
+    };
+
+    attemptPurchase("B004"); // 4th title (Should succeed)
+    attemptPurchase("B005"); // 5th title (Should succeed)
+    attemptPurchase("B004"); // Already owned, doesn't count against limit! (Should succeed)
+    attemptPurchase("B006"); // 6th title (Should fail)
+
     return 0;
 }
 

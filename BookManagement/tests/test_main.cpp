@@ -268,6 +268,30 @@ static void testQ6Taxes() {
     AcquisitionManager::printTaxRatePercent = 0;
 }
 
+static void testQ7TitleLimits() {
+    Catalog c;
+    c.emplace<Book>("B1", "Book 1", std::vector<std::string>{"A"}, "1", "P", 2026, Money::of(10));
+    c.emplace<Book>("B2", "Book 2", std::vector<std::string>{"A"}, "2", "P", 2026, Money::of(10));
+    c.emplace<Book>("B3", "Book 3", std::vector<std::string>{"A"}, "3", "P", 2026, Money::of(10));
+    
+    Budget b(Money::of(1000));
+    // Max 100 units, $1000 spend, BUT only 2 unique titles allowed!
+    b.setQuota(ResourceCategory::Book, {100, Money::of(1000), 2}); 
+    
+    AcquisitionManager acq(c, b);
+    
+    CHECK(acq.canPurchase("B1", 5)); // 1st title
+    acq.purchase("B1", 5);
+    
+    CHECK(acq.canPurchase("B2", 5)); // 2nd title
+    acq.purchase("B2", 5);
+    
+    CHECK(acq.canPurchase("B1", 10)); // B1 is already bought, doesn't count against title limit!
+    acq.purchase("B1", 10);
+    
+    CHECK(!acq.canPurchase("B3", 1)); // 3rd title -> REJECTED
+}
+
 int main() {
     testMoney();
     testResourcesAndCost();
@@ -281,6 +305,7 @@ int main() {
     testQ4Pricing();
     testQ5BulkDiscounts();
     testQ6Taxes();
+    testQ7TitleLimits();
     
     std::cout << (g_checks - g_failures) << "/" << g_checks << " checks passed\n";
     return g_failures == 0 ? 0 : 1;

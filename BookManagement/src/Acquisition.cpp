@@ -40,7 +40,7 @@ bool AcquisitionManager::canPurchase(const std::string& id, int quantity,
         else {
             Money cost = r->costFor(quantity); 
             Money tax = calculateTax(r->category(), cost); 
-            why = budget_.check(r->category(), quantity, cost + tax);
+            why = budget_.check(r->category(), quantity, cost + tax, id);
         }
     } else {
         why = "resource not found: " + id;
@@ -63,7 +63,7 @@ const PurchaseRecord& AcquisitionManager::purchase(const std::string& id, int qu
     const Resource& r = catalog_.get(id);        // may throw NotFoundError
     const Money cost = r.costFor(quantity);      // may throw invalid_argument
     const Money tax = calculateTax(r.category(), cost);
-    budget_.commit(r.category(), quantity, cost+tax);  // may throw quota/budget errors
+    budget_.commit(r.category(), quantity, cost + tax, id);  // may throw quota/budget errors
     catalog_.addHoldings(id, quantity);
     return record(&r, id, quantity, cost, tax, true, {});
 }
@@ -84,7 +84,7 @@ std::vector<PurchaseRecord> AcquisitionManager::processBatch(
         } else {
             cost = r->costFor(req.quantity);
             tax = calculateTax(r->category(), cost);
-            why = budget_.check(r->category(), req.quantity, cost+tax);
+            why = budget_.check(r->category(), req.quantity, cost + tax, req.resourceId);
         }
 
         if (why.empty()) {
