@@ -54,6 +54,9 @@ public:
 
     void refund(ResourceCategory c, int units, Money cost, const std::string& id = "", bool removeTitle = false);
 
+    // Q10: Year-end rollover.
+    Budget rollover(int carryForwardPercent) const;
+
     void print(std::ostream& os) const;
 
 private:

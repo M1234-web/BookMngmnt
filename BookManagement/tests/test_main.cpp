@@ -340,6 +340,32 @@ static void testQ9Departments() {
     CHECK(mainBudget.spent() == Money::of(500));
 }
 
+static void testQ10Rollover() {
+    Budget b1(Money::of(1000));
+    b1.setQuota(ResourceCategory::Book, {10, Money::of(500), 5}); // Set a quota
+    
+    // Spend 200, leaving 800 unspent
+    b1.commit(ResourceCategory::Book, 2, Money::of(200), "B1");
+    
+    // Roll over to next year, keeping 50% of the unspent 800 (which is 400)
+    // Base 1000 + 400 carryover = 1400 new total
+    Budget b2 = b1.rollover(50);
+    
+    // Verify math
+    CHECK(b2.total() == Money::of(1400));
+    CHECK(b2.spent() == Money::of(0));
+    CHECK(b2.remaining() == Money::of(1400));
+    
+    // Verify quotas carried over but usage reset
+    auto q = b2.quotaFor(ResourceCategory::Book);
+    CHECK(q.has_value());
+    CHECK(q->maxUnits == 10);
+    
+    auto u = b2.usageFor(ResourceCategory::Book);
+    CHECK(u.units == 0);      // Reset!
+    CHECK(u.titles.empty());  // Reset!
+}
+
 int main() {
     testMoney();
     testResourcesAndCost();
@@ -356,6 +382,7 @@ int main() {
     testQ7TitleLimits();
     testQ8Cancellation();
     testQ9Departments();
+    testQ10Rollover();
     
     std::cout << (g_checks - g_failures) << "/" << g_checks << " checks passed\n";
     return g_failures == 0 ? 0 : 1;

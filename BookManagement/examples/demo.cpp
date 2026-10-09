@@ -238,6 +238,20 @@ int main() {
     std::cout << "\n=== Final Acquisition Report (Notice the Dept column!) ===\n";
     acq.printReport(std::cout);
 
+    //Q10: YEAR-END ROLLOVER DEMO
+
+    std::cout << "\n=== Q10: Year-End Rollover Demonstration ===\n";
+    std::cout << "Original Main Budget:\n";
+    budget.print(std::cout);
+    
+    // Roll over 25% of whatever is left!
+    int rolloverPercent = 25;
+    std::cout << "\nRolling over to Next Year... (Carrying forward " << rolloverPercent << "% of unspent money)\n\n";
+    
+    bookmgmt::Budget nextYearBudget = budget.rollover(rolloverPercent);
+    std::cout << "Next Year's Budget (Fresh usage, quotas intact!):\n";
+    nextYearBudget.print(std::cout);
+
     return 0;
 }
 

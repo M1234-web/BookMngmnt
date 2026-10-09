@@ -153,4 +153,25 @@ void Budget::refund(ResourceCategory c, int units, Money cost, const std::string
     spent_ -= cost;
 }
 
+// Q10: Year-end rollover
+Budget Budget::rollover(int carryForwardPercent) const {
+    if (carryForwardPercent < 0 || carryForwardPercent > 100) {
+        throw std::invalid_argument("carry forward percentage must be between 0 and 100");
+    }
+
+    // 1. Calculate the carry-forward amount from this year's unspent money
+    std::int64_t carryMinor = (remaining().minorUnits() * carryForwardPercent) / 100;
+    Money nextTotal = total_ + Money::fromMinor(carryMinor);
+    
+    // 2. Create next year's budget with the new total
+    Budget nextYear(nextTotal);
+    
+    // 3. Copy all the quota rules exactly as they are
+    nextYear.quotas_ = this->quotas_; 
+    
+    // 4. Note: We purposely DO NOT copy usage_. Next year starts completely fresh!
+    
+    return nextYear;
+}
+
 }  // namespace bookmgmt
