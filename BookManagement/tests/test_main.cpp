@@ -10,6 +10,7 @@
 #include "bookmgmt/EBook.h"
 #include "bookmgmt/AudioBook.h"
 #include "bookmgmt/Thesis.h"
+#include "bookmgmt/Lending.h"
 
 using namespace bookmgmt;
 
@@ -436,6 +437,54 @@ static void testQ13Searches() {
     CHECK(byYear.size() == 2);
 }
 
+static void testQ14Lending() {
+    Catalog c;
+    c.emplace<Book>("B1", "Print Book", std::vector<std::string>{"A"}, "123", "Pub", 2020, Money::of(10));
+    c.emplace<EBook>("E1", "Digital Book", std::vector<std::string>{"B"}, "456", "Pub", 2021, Money::of(10), "url", FileFormat::PDF, false);
+
+    // Add holdings simulating an acquisition
+    c.addHoldings("B1", 2); // 2 physical copies
+    c.addHoldings("E1", 1); // 1 digital seat
+
+    LendingManager lending(c);
+
+    // 1. Borrowing Print
+    lending.borrowPrint("Alice", "B1");
+    CHECK(lending.availableUnits("B1") == 1);
+    
+    lending.borrowPrint("Bob", "B1");
+    CHECK(lending.availableUnits("B1") == 0); // All gone!
+
+    // Exception should throw if Charlie tries to borrow
+    bool caughtPrintLimit = false;
+    try { lending.borrowPrint("Charlie", "B1"); }
+    catch (const std::invalid_argument&) { caughtPrintLimit = true; }
+    CHECK(caughtPrintLimit);
+
+    // 2. Electronic Sessions
+    lending.openSession("Alice", "E1");
+    CHECK(lending.availableUnits("E1") == 0);
+
+    // Exception should throw if Bob tries to open a session (only 1 seat!)
+    bool caughtSeatLimit = false;
+    try { lending.openSession("Bob", "E1"); }
+    catch (const std::invalid_argument&) { caughtSeatLimit = true; }
+    CHECK(caughtSeatLimit);
+
+    // 3. Enforcement of Digital vs Print
+    bool caughtWrongType = false;
+    try { lending.borrowPrint("Charlie", "E1"); } // Can't "borrow" an EBook
+    catch (const std::invalid_argument&) { caughtWrongType = true; }
+    CHECK(caughtWrongType);
+
+    // 4. Returning/Closing
+    lending.returnPrint("Alice", "B1");
+    CHECK(lending.availableUnits("B1") == 1);
+    
+    lending.closeSession("Alice", "E1");
+    CHECK(lending.availableUnits("E1") == 1);
+}
+
 int main() {
     testMoney();
     testResourcesAndCost();
@@ -456,6 +505,7 @@ int main() {
     testQ11BatchTransaction();
     testQ12Vendors();
     testQ13Searches();
+    testQ14Lending();
     
     std::cout << (g_checks - g_failures) << "/" << g_checks << " checks passed\n";
     return g_failures == 0 ? 0 : 1;

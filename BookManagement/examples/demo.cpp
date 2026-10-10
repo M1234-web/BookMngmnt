@@ -8,6 +8,7 @@
 #include "bookmgmt/EBook.h"
 #include "bookmgmt/AudioBook.h"
 #include "bookmgmt/Thesis.h"
+#include "bookmgmt/Lending.h"
 
 using namespace bookmgmt;
 
@@ -303,6 +304,26 @@ int main() {
     for (const auto* r : ninetiesBooks) {
         std::cout << "  - " << r->summary() << "\n";
     }
+
+    //Q14: LENDING DEMO
+    std::cout << "\n=== Q14: Lending & Sessions Demonstration ===\n";
+    bookmgmt::LendingManager lending(catalog);
+
+    std::cout << "Alice borrows physical book (B001)...\n";
+    lending.borrowPrint("Alice", "B001");
+    
+    std::cout << "Bob opens a session for digital EBook (E001)...\n";
+    lending.openSession("Bob", "E001");
+
+    std::cout << "Alice's current items: ";
+    for (const auto& id : lending.getPatronItems("Alice")) {
+        std::cout << catalog.get(id).title() << " ";
+    }
+    std::cout << "\n";
+    
+    std::cout << "Bob closes session (E001)...\n";
+    lending.closeSession("Bob", "E001");
+    std::cout << "Available seats for E001 now: " << lending.availableUnits("E001") << "\n";
 
     return 0;
 }
