@@ -269,6 +269,41 @@ int main() {
     std::cout << "\n=== Final Acquisition Report (Notice the batch rejections!) ===\n";
     acq.printReport(std::cout);
 
+    //Q12: VENDORS DEMO
+
+    std::cout << "\n=== Q12: Vendors Demonstration ===\n";
+    
+    // Add multiple vendors to an existing book
+    bookmgmt::Resource& demoBook = catalog.get("B001"); // Clean Code (Default price was 450)
+    demoBook.addVendor("Amazon", bookmgmt::Money::of(420));
+    demoBook.addVendor("TechBooks Direct", bookmgmt::Money::of(390)); // This is the cheapest!
+    demoBook.addVendor("University Press", bookmgmt::Money::of(440));
+    
+    std::cout << "Available Vendors for Clean Code:\n";
+    demoBook.print(std::cout);
+
+    std::cout << "\nPurchasing 1 copy of Clean Code...\n";
+    auto vendorRec = acq.purchase("B001", 1);
+    std::cout << "Charged: " << vendorRec.cost << " via Vendor: " << vendorRec.vendor << "\n";
+    
+    std::cout << "\n=== Final Acquisition Report (Notice the Vendor column!) ===\n";
+    acq.printReport(std::cout);
+
+    //Q13: SEARCHMODIFICATIONS DEMO
+    std::cout << "\n=== Q13: Advanced Search Demonstration ===\n";
+    
+    auto martinBooks = catalog.searchAuthor("Martin");
+    std::cout << "Books Authored by 'Martin':\n";
+    for (const auto* r : martinBooks) {
+        std::cout << "  - " << r->summary() << "\n";
+    }
+
+    auto ninetiesBooks = catalog.searchYearRange(1990, 1999);
+    std::cout << "\nResources Published in the 1990s:\n";
+    for (const auto* r : ninetiesBooks) {
+        std::cout << "  - " << r->summary() << "\n";
+    }
+
     return 0;
 }
 

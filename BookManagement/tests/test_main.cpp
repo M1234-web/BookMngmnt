@@ -395,6 +395,47 @@ static void testQ11BatchTransaction() {
     CHECK(c.holdings("B1") == 0);     // Holdings untouched
 }
 
+static void testQ12Vendors() {
+    Catalog c;
+    auto& book = c.emplace<Book>("B1", "Book 1", std::vector<std::string>{"A"}, "1", "P", 2026, Money::of(100)); // Default is 100
+    
+    book.addVendor("Amazon", Money::of(95));
+    book.addVendor("LocalBookstore", Money::of(110));
+    book.addVendor("DiscountBooks", Money::of(80));
+
+    // It should automatically recognize 80 as the cheapest
+    CHECK(book.unitPrice() == Money::of(80));
+    CHECK(book.cheapestVendor() == "DiscountBooks");
+
+    Budget b(Money::of(1000));
+    AcquisitionManager acq(c, b);
+
+    auto rec = acq.purchase("B1", 1);
+    CHECK(rec.cost == Money::of(80)); // Purchased at cheapest rate
+    CHECK(rec.vendor == "DiscountBooks"); // Vendor correctly logged
+}
+
+static void testQ13Searches() {
+    Catalog c;
+    c.emplace<Book>("B1", "C++ Primer", std::vector<std::string>{"Lippman", "Lajoie"}, "978-0321714114", "Addison", 2012, Money::of(50));
+    c.emplace<Journal>("J1", "C++ Report", "SIGS", 1995, Money::of(10), "1040-6042", 10);
+    c.emplace<EBook>("E1", "Effective C++", std::vector<std::string>{"Scott Meyers"}, "978-0321334879", "Addison", 2005, Money::of(40), "url", FileFormat::PDF, false);
+
+    // 1. Test Author Search
+    auto byMeyers = c.searchAuthor("meyers");
+    CHECK(byMeyers.size() == 1);
+    CHECK(byMeyers[0]->id() == "E1");
+    
+    // 2. Test ISBN Search
+    auto byIssn = c.searchIsbnIssn("1040-6042");
+    CHECK(byIssn.size() == 1);
+    CHECK(byIssn[0]->id() == "J1");
+
+    // 3. Test Year Range (1990 to 2010 should catch Journal(1995) and EBook(2005))
+    auto byYear = c.searchYearRange(1990, 2010);
+    CHECK(byYear.size() == 2);
+}
+
 int main() {
     testMoney();
     testResourcesAndCost();
@@ -413,6 +454,8 @@ int main() {
     testQ9Departments();
     testQ10Rollover();
     testQ11BatchTransaction();
+    testQ12Vendors();
+    testQ13Searches();
     
     std::cout << (g_checks - g_failures) << "/" << g_checks << " checks passed\n";
     return g_failures == 0 ? 0 : 1;

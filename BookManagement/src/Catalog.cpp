@@ -5,6 +5,9 @@
 #include <stdexcept>
 
 #include "bookmgmt/Exceptions.h"
+#include "bookmgmt/Book.h"    // Q13 
+#include "bookmgmt/EBook.h"   // Q13 
+#include "bookmgmt/Journal.h"
 
 namespace bookmgmt {
 
@@ -85,6 +88,50 @@ std::vector<const Resource*> Catalog::searchTitle(const std::string& text) const
     const std::string needle = lower(text);
     return where([&needle](const Resource& r) {
         return lower(r.title()).find(needle) != std::string::npos;
+    });
+}
+
+// Q13: Search by author name 
+std::vector<const Resource*> Catalog::searchAuthor(const std::string& text) const {
+    const std::string needle = lower(text);
+    return where([&needle](const Resource& r) {
+        // Check if it's a Book
+        if (const auto* book = dynamic_cast<const Book*>(&r)) {
+            for (const auto& author : book->authors()) {
+                if (lower(author).find(needle) != std::string::npos) return true;
+            }
+        }
+        // Check if it's an EBook
+        if (const auto* ebook = dynamic_cast<const EBook*>(&r)) {
+            for (const auto& author : ebook->authors()) {
+                if (lower(author).find(needle) != std::string::npos) return true;
+            }
+        }
+        return false; // Not a book/ebook, or no author match
+    });
+}
+
+// Q13: Search by ISBN 
+std::vector<const Resource*> Catalog::searchIsbnIssn(const std::string& text) const {
+    const std::string needle = lower(text);
+    return where([&needle](const Resource& r) {
+        if (const auto* book = dynamic_cast<const Book*>(&r)) {
+            if (lower(book->isbn()).find(needle) != std::string::npos) return true;
+        }
+        if (const auto* ebook = dynamic_cast<const EBook*>(&r)) {
+            if (lower(ebook->isbn()).find(needle) != std::string::npos) return true;
+        }
+        if (const auto* journal = dynamic_cast<const Journal*>(&r)) {
+            if (lower(journal->issn()).find(needle) != std::string::npos) return true;
+        }
+        return false; 
+    });
+}
+
+// Q13: Search by publication year range 
+std::vector<const Resource*> Catalog::searchYearRange(int startYear, int endYear) const {
+    return where([startYear, endYear](const Resource& r) {
+        return r.year() >= startYear && r.year() <= endYear;
     });
 }
 
