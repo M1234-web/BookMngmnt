@@ -34,6 +34,8 @@ struct PurchaseRecord {
     int cancelledOrderNo = -1;
     std::string department = "Main";
 
+    std::string vendor = "Default"; // Q12: Track which vendor was used
+
     //total billed amount
     Money totalCost() const { return cost + tax; }
 };

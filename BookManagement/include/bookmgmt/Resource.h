@@ -7,6 +7,7 @@
 
 #include <iosfwd>
 #include <string>
+#include <map>
 
 #include "bookmgmt/Money.h"
 
@@ -33,8 +34,15 @@ public:
     const std::string& title() const { return title_; }
     const std::string& publisher() const { return publisher_; }
     int year() const { return year_; }
-    Money unitPrice() const { return unitPrice_; }
+    // Money unitPrice() const { return unitPrice_; }
+    // void setUnitPrice(Money price);
+
+    Money unitPrice() const; 
     void setUnitPrice(Money price);
+
+    // Q12: Vendor management functions
+    void addVendor(const std::string& vendorName, Money price);
+    std::string cheapestVendor() const;
 
     virtual ResourceCategory category() const = 0;
     virtual bool isDigital() const { return false; }
@@ -60,7 +68,10 @@ private:
     std::string title_;
     std::string publisher_;
     int year_;
-    Money unitPrice_;
+    //Money unitPrice_;
+
+    // Q12: Replaced Money unitPrice_ with a map of vendors and prices
+    std::map<std::string, Money> vendors_;
 };
 
 std::ostream& operator<<(std::ostream& os, const Resource& r);

@@ -68,10 +68,13 @@ bool AcquisitionManager::canPurchase(const std::string& id, int quantity,
 PurchaseRecord& AcquisitionManager::record(const Resource* r, const std::string& id,
                                            int qty, Money cost, Money tax, bool approved,
                                            std::string reason, const std::string& dept) {
+    // Determine the vendor dynamically
+    std::string vendorName = r ? r->cheapestVendor() : "Unknown";
+
     history_.push_back(PurchaseRecord{
         nextOrderNo_++, id, r ? r->title() : std::string("(unknown)"),
         r ? r->category() : ResourceCategory::Book, qty, cost, tax, approved,
-        std::move(reason), false, -1, dept});
+        std::move(reason), false, -1, dept, vendorName});
     return history_.back();
 }
 
@@ -250,8 +253,7 @@ const PurchaseRecord& AcquisitionManager::cancel(int orderNo) {
 
 void AcquisitionManager::printReport(std::ostream& os) const {
     os << "Order history (" << history_.size() << " orders)\n";
-    // Added Dept Column
-    os << "  #    Status      ID     Qty    Pre-Tax        Tax      Total       Dept        Title\n";
+    os << "  #    Status      ID     Qty    Pre-Tax        Tax      Total       Dept        Vendor           Title\n";
     for (const auto& rec : history_) {
         std::string status = rec.isCancellation ? "CANCELLED " : (rec.approved ? "APPROVED  " : "REJECTED  ");
         
@@ -261,7 +263,8 @@ void AcquisitionManager::printReport(std::ostream& os) const {
            << std::setw(10) << std::right << rec.cost.toString() << "  "
            << std::setw(8) << rec.tax.toString() << "  "
            << std::setw(10) << rec.totalCost().toString() << "  "
-           << std::setw(10) << std::left << rec.department << "  " // Print Dept
+           << std::setw(10) << std::left << rec.department << "  "
+           << std::setw(15) << std::left << rec.vendor << "  " // Q12: Print Vendor
            << std::left << rec.title;
            
         if (!rec.approved && !rec.isCancellation) {
